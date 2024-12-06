@@ -3,7 +3,7 @@
 
 {
     'name': 'Exchange Rate Metrics',
-    'version': '14.0.1.0.1',
+    'version': '15.0.1.0.1',
     'author': 'Ross Golder',
     'website': 'https://golder.org/',
     'license': 'AGPL-3',
