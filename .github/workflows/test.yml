@@ -2,9 +2,9 @@ name: Test
 
 on:
   push:
-    branches: [ '16.0', '17.0', 'develop' ]
+    branches: ['17.0', 'develop']
   pull_request:
-    branches: [ '16.0', '17.0' ]
+    branches: ['17.0']
   workflow_dispatch:
 
 jobs:
@@ -12,11 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
-          - odoo-version: '16.0'
-            python-version: '3.11'
-          - odoo-version: '16.0'
-            python-version: '3.12'
+        python-version: ['3.11']
 
     services:
       postgres:
@@ -43,8 +39,8 @@ jobs:
 
     - name: Install system dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y \
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq \
           libxml2-dev libxslt1-dev libldap2-dev libsasl2-dev \
           libjpeg-dev libpq-dev libffi-dev \
           nodejs npm \
@@ -67,16 +63,16 @@ jobs:
           python3-xlwt \
           libxml2-utils
 
-    - name: Clone Odoo
+    - name: Fetch Odoo requirements
       run: |
-        git clone --depth 1 --branch ${{ matrix.odoo-version }} https://github.com/odoo/odoo.git odoo
+        curl -fsSL -o odoo-requirements.txt https://raw.githubusercontent.com/odoo/odoo/17.0/requirements.txt
 
     - name: Install Python dependencies
       run: |
         pip install --upgrade pip wheel setuptools
-        pip install -r odoo/requirements.txt
+        pip install -r odoo-requirements.txt
         pip install coverage pytest pytest-odoo pytest-cov
-        pip install flake8 black isort bandit[toml] safety
+        pip install flake8 black isort bandit[toml]
 
     - name: Lint with flake8
       run: |
@@ -109,10 +105,6 @@ jobs:
             bandit -r "$dir" || true
           fi
         done
-
-    - name: Check dependencies with safety
-      run: |
-        safety check || true
 
     - name: Validate XML files
       run: |

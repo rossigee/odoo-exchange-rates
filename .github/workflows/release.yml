@@ -31,7 +31,6 @@ jobs:
         echo "tag=$TAG" >> $GITHUB_OUTPUT
         echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-        # Check if pre-release
         if [[ "$VERSION" == *"alpha"* ]] || [[ "$VERSION" == *"beta"* ]] || [[ "$VERSION" == *"rc"* ]]; then
           echo "prerelease=true" >> $GITHUB_OUTPUT
         else
@@ -103,7 +102,8 @@ jobs:
 
         for manifest in glob.glob('*/__manifest__.py'):
           module_dir = os.path.dirname(manifest)
-          modules.append(module_dir)
+          if module_dir:
+            modules.append(module_dir)
 
         for module in modules:
           # Tar.gz
@@ -111,12 +111,11 @@ jobs:
           with tarfile.open(tar_name, "w:gz") as tar:
             tar.add(module, arcname=f"odoo-exchange-rates-17.0/{module}")
 
-          # ZIP
+          # ZIP (deflated)
           zip_name = f"dist/{module}-{version}.zip"
-          with zipfile.ZipFile(zip_name, 'w') as zf:
+          with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zf:
             for root, dirs, files in os.walk(module):
-              # Skip excluded directories
-              dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', '.pytest_cache', 'dist']]
+              dirs[:] = [d for d in dirs if d not in ['.git', '__pycache__', '.pytest_cache', 'dist', '.github', '.gitea', 'venv']]
               for file in files:
                 if not file.startswith('.'):
                   file_path = os.path.join(root, file)
@@ -131,8 +130,8 @@ jobs:
           for filename in os.listdir('.'):
             if filename != 'SHA256SUMS':
               with open(filename, 'rb') as fp:
-                hash = hashlib.sha256(fp.read()).hexdigest()
-                f.write(f"{hash}  {filename}\n")
+                h = hashlib.sha256(fp.read()).hexdigest()
+                f.write(f"{h}  {filename}\n")
         EOF
 
         echo "📦 Packages created:"
@@ -149,33 +148,3 @@ jobs:
         files: |
           dist/*
         token: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Dispatch to downstream repos
-      if: steps.version.outputs.prerelease == 'false'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const repos = [
-            'odoo-bksc',
-            'odoo-pksc',
-            'odoo-rossgolderltd',
-            'odoo-family',
-            'bankrutrocks'
-          ];
-
-          for (const repo of repos) {
-            try {
-              await github.rest.repos.createDispatchEvent({
-                owner: 'rossigee',
-                repo: repo,
-                event_type: 'module-release',
-                client_payload: {
-                  module: context.repo.repo,
-                  version: '${{ steps.version.outputs.version }}'
-                }
-              });
-              console.log(`✅ Dispatched to rossigee/${repo}`);
-            } catch (error) {
-              console.log(`⚠️ Failed to dispatch to rossigee/${repo}: ${error.message}`);
-            }
-          }
