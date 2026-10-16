@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        odoo-version: ['17.0']
         python-version: ['3.11']
 
     services:
