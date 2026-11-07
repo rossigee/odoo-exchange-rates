@@ -20,14 +20,19 @@ class ExchangeRateMetrics(metaclass=Singleton):
         self.g2 = Gauge('exchange_rate_date', 'Exchange rate last updated', ['name'])
 
 class PrometheusController(Controller):
+    # TODO(18.0-port): auth='token' is a custom auth type registered by
+    # monitoring_prometheus_token_auth (ir.http._auth_method_token), which has no 18.0 source.
     @route("/metrics", auth='token')
     def metrics(self, **kw):
         m = ExchangeRateMetrics()
 
         currencies = request.env['res.currency'].search([
-            ('active', '=', 'true')
+            ('active', '=', True)
         ])
         for c in currencies:
+            # TODO(18.0-port): res.currency 'date' and 'rate' are not listed as removed in
+            # OpenUpgrade base 18.0.1.3 analysis, but their presence on 18.0 res.currency was
+            # not directly confirmed (OCA 18.0 currency module reads rate_ids[].name).
             if not c['date']:
                 continue
             t = time.mktime(c['date'].timetuple())
