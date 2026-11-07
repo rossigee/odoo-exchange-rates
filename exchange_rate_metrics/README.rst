@@ -7,7 +7,12 @@ Overview
 
 Provides metrics for the active exchange rates.
 
-NOTE: Depends on the `monitoring_prometheus_token_auth` module found [here](https://github.com/rossigee/odoo-cloud-platform). That module is not yet present on the 18.0 branch.
+The metrics are served at ``/metrics/exchange_rates``. ``/metrics`` is left to
+``monitoring_prometheus``. Requests must send ``Authorization: Bearer <key>``, where
+``<key>`` is an API key with the ``metrics`` scope belonging to a user who can read
+active currencies. Requests without a valid key get HTTP 401.
+
+The key must have the ``metrics`` scope (created via ``res.users.apikeys._generate``).
 
 
 Credits

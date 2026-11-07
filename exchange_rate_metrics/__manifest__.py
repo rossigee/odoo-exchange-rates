@@ -9,9 +9,6 @@
     'license': 'AGPL-3',
     'category': 'Accounting',
     'summary': 'Provides metrics to monitor exchange rates via Prometheus',
-    # TODO(18.0-port): depends on monitoring_prometheus (18.0, odoo-cloud-platform), which has no
-    # token auth. The controller still uses auth='token' from the removed module; token auth must
-    # be re-implemented or the route will fail. Decision pending.
     'depends': [
         'monitoring_prometheus',
     ],

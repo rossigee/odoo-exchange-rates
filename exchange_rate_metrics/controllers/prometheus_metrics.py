@@ -20,19 +20,40 @@ class ExchangeRateMetrics(metaclass=Singleton):
         self.g2 = Gauge('exchange_rate_date', 'Exchange rate last updated', ['name'])
 
 class PrometheusController(Controller):
-    # TODO(18.0-port): auth='token' is a custom auth type registered by
-    # monitoring_prometheus_token_auth (ir.http._auth_method_token), which has no 18.0 source.
-    @route("/metrics", auth='token')
+
+    def _metrics_user_id(self):
+        """Return the user id for a valid 'metrics'-scoped API key, else False.
+
+        Odoo 18.0 keeps API keys in res.users.apikeys; the scope check is done
+        by _check_credentials. Served on its own path because monitoring_prometheus
+        already serves /metrics publicly.
+        """
+        header = request.httprequest.headers.get('Authorization', '')
+        if not header.lower().startswith('bearer '):
+            return False
+        key = header[7:].strip()
+        if not key:
+            return False
+        return request.env['res.users.apikeys'].sudo()._check_credentials(scope='metrics', key=key)
+
+    @route("/metrics/exchange_rates", auth='public', methods=['GET'])
     def metrics(self, **kw):
+        uid = self._metrics_user_id()
+        if not uid:
+            return request.make_response(
+                'Unauthorized',
+                headers=[('WWW-Authenticate', 'Bearer'), ('Content-Type', 'text/plain')],
+                status=401,
+            )
+        request.update_env(user=uid)
+
         m = ExchangeRateMetrics()
 
         currencies = request.env['res.currency'].search([
             ('active', '=', True)
         ])
         for c in currencies:
-            # TODO(18.0-port): res.currency 'date' and 'rate' are not listed as removed in
-            # OpenUpgrade base 18.0.1.3 analysis, but their presence on 18.0 res.currency was
-            # not directly confirmed (OCA 18.0 currency module reads rate_ids[].name).
+            # res.currency.date, rate and rate_ids exist in Odoo 18.0 (base/models/res_currency.py).
             if not c['date']:
                 continue
             t = time.mktime(c['date'].timetuple())
